@@ -1,0 +1,53 @@
+name: Publish Release
+
+on:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    if: github.event.release.prerelease == false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          registry-url: https://registry.npmjs.org
+      - name: Install dependencies
+        run: npm ci
+      - name: Determine release version
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          VERSION="${VERSION#v}"
+          if [ -z "$VERSION" ]; then
+            echo "Unable to determine release version from tag $GITHUB_REF_NAME" >&2
+            exit 1
+          fi
+          echo "RELEASE_VERSION=$VERSION" >> "$GITHUB_ENV"
+      - name: Version packages for release
+        env:
+          NX_DAEMON: "false"
+          NX_SKIP_NX_CACHE: "true"
+        run: >-
+          npx nx release version "$RELEASE_VERSION"
+          --git-commit=false
+          --git-tag=false
+          --git-push=false
+          --stage-changes=false
+      - name: Publish packages
+        env:
+          NX_DAEMON: "false"
+          NX_SKIP_NX_CACHE: "true"
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npx nx release publish --tag=latest --access=public

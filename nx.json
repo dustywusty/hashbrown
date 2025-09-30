@@ -70,7 +70,7 @@
       "ollama"
     ],
     "version": {
-      "preVersionCommand": "npx nx run-many -t build"
+      "preVersionCommand": "npx tsx tools/scripts/sync-peer-deps.ts && npx nx run-many -t build"
     }
   },
   "generators": {
